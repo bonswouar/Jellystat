@@ -56,6 +56,7 @@ const PORT = 3000;
 const LISTEN_IP = process.env.JS_LISTEN_IP || "0.0.0.0";
 const JWT_SECRET = process.env.JWT_SECRET;
 const BASE_NAME = process.env.JS_BASE_URL ? ensureSlashes(process.env.JS_BASE_URL) : "";
+const REFRESH_INTERVAL = process.env.REFRESH_INTERVAL ?? 1000;
 
 if (JWT_SECRET === undefined) {
   console.log("JWT Secret cannot be undefined");
@@ -240,7 +241,7 @@ try {
       setupWebSocketServer(server, BASE_NAME);
       server.listen(PORT, LISTEN_IP, async () => {
         console.log(`[JELLYSTAT] Server listening on http://${LISTEN_IP}:${PORT}`);
-        ActivityMonitor.ActivityMonitor(1000);
+        ActivityMonitor.ActivityMonitor(REFRESH_INTERVAL);
         new TaskManager();
         new TaskScheduler();
       });
