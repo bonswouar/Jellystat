@@ -10,6 +10,7 @@ const backup = require("../classes/backup");
 const triggertype = require("../logging/triggertype");
 const taskstate = require("../logging/taskstate");
 const taskName = require("../logging/taskName");
+const sanitizeFilename = require("../utils/sanitizer");
 
 const { sendUpdate } = require("../ws");
 const db = require("../db");
@@ -41,7 +42,10 @@ function readFile(path) {
 
 async function restore(file, refLog) {
   refLog.logData.push({ color: "lawngreen", Message: "Starting Restore" });
-  refLog.logData.push({ color: "yellow", Message: "Restoring from Backup: " + file });
+  refLog.logData.push({
+    color: "yellow",
+    Message: "Restoring from Backup: " + file,
+  });
   const pool = new Pool({
     user: postgresUser,
     password: postgresPassword,
@@ -58,7 +62,11 @@ async function restore(file, refLog) {
     // Use await to wait for the Promise to resolve
     jsonData = await readFile(backupPath);
   } catch (err) {
-    refLog.logData.push({ color: "red", key: tableName, Message: `Failed to read backup file` });
+    refLog.logData.push({
+      color: "red",
+      key: tableName,
+      Message: `Failed to read backup file`,
+    });
     Logging.updateLog(refLog.uuid, refLog.logData, taskstate.FAILED);
     console.error(err);
   }
@@ -72,7 +80,11 @@ async function restore(file, refLog) {
   for (let table of jsonData) {
     const data = Object.values(table)[0];
     const tableName = Object.keys(table)[0];
-    refLog.logData.push({ color: "dodgerblue", key: tableName, Message: `Restoring ${tableName}` });
+    refLog.logData.push({
+      color: "dodgerblue",
+      key: tableName,
+      Message: `Restoring ${tableName}`,
+    });
     for (let index in data) {
       const keysWithQuotes = Object.keys(data[index]).map((key) => `"${key}"`);
       const keyString = keysWithQuotes.join(", ");
@@ -139,7 +151,8 @@ router.get("/restore/:filename", async (req, res) => {
     let refLog = { logData: [], uuid: uuid };
     Logging.insertLog(uuid, triggertype.Manual, taskName.restore);
 
-    const filePath = path.join(__dirname, "..", backupfolder, req.params.filename);
+    const filename = sanitizeFilename(req.params.filename);
+    const filePath = path.join(__dirname, "..", backupfolder, filename);
 
     await restore(filePath, refLog);
     Logging.updateLog(uuid, refLog.logData, taskstate.SUCCESS);
@@ -180,14 +193,16 @@ router.get("/files", (req, res) => {
 
 //download backup file
 router.get("/files/:filename", (req, res) => {
-  const filePath = path.join(__dirname, "..", backupfolder, req.params.filename);
+  const filename = sanitizeFilename(req.params.filename);
+  const filePath = path.join(__dirname, "..", backupfolder, filename);
   res.download(filePath);
 });
 
 //delete backup
 router.delete("/files/:filename", (req, res) => {
   try {
-    const filePath = path.join(__dirname, "..", backupfolder, req.params.filename);
+    const filename = sanitizeFilename(req.params.filename);
+    const filePath = path.join(__dirname, "..", backupfolder, filename);
 
     fs.unlink(filePath, (err) => {
       if (err) {
